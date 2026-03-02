@@ -1,0 +1,2 @@
+Customer: rajitha, Vehicle ID: C101, Brand: Toyota, Days: 4, Total Price: $240.0
+Customer: geeta, Vehicle ID: C202, Brand: BMW, Days: 5, Total Price: $750.0

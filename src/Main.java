@@ -1,5 +1,6 @@
 package src;
 import java.util.*;
+import java.io.*;
 
 // ================= INTERFACE =================
 interface Rentable {
@@ -65,7 +66,7 @@ abstract class Vehicle implements Rentable {
     public abstract double calculatePrice(int days);
 }
 
-// ================= INHERITANCE =================
+// ================= CAR =================
 class Car extends Vehicle {
 
     private String model;
@@ -85,7 +86,7 @@ class Car extends Vehicle {
     }
 }
 
-// ================= POLYMORPHISM =================
+// ================= PREMIUM CAR =================
 class PremiumCar extends Car {
 
     public PremiumCar(String vehicleId, String brand, String model, double basePricePerDay) {
@@ -95,13 +96,12 @@ class PremiumCar extends Car {
     @Override
     public double calculatePrice(int days) {
         double base = super.calculatePrice(days);
-        return base + (base * 0.25); // 25% premium charge
+        return base + (base * 0.25);
     }
 }
 
-// ================= ENCAPSULATION =================
+// ================= CUSTOMER =================
 class Customer {
-
     private String customerId;
     private String name;
 
@@ -119,37 +119,33 @@ class Customer {
     }
 }
 
-// ================= COMPOSITION =================
+// ================= RENTAL =================
 class Rental {
-
     private Vehicle vehicle;
     private Customer customer;
     private int days;
+    private double totalPrice;
 
-    public Rental(Vehicle vehicle, Customer customer, int days) {
+    public Rental(Vehicle vehicle, Customer customer, int days, double totalPrice) {
         this.vehicle = vehicle;
         this.customer = customer;
         this.days = days;
+        this.totalPrice = totalPrice;
     }
 
-    public Vehicle getVehicle() {
-        return vehicle;
-    }
-
-    public Customer getCustomer() {
-        return customer;
-    }
-
-    public int getDays() {
-        return days;
+    public String toString() {
+        return "Customer: " + customer.getName() +
+               ", Vehicle ID: " + vehicle.getVehicleId() +
+               ", Brand: " + vehicle.getBrand() +
+               ", Days: " + days +
+               ", Total Price: $" + totalPrice;
     }
 }
 
-// ================= SERVICE LAYER =================
+// ================= SERVICE =================
 class RentalService {
 
     private List<Vehicle> vehicles = new ArrayList<>();
-    private List<Rental> rentals = new ArrayList<>();
 
     public void addVehicle(Vehicle vehicle) {
         vehicles.add(vehicle);
@@ -177,14 +173,28 @@ class RentalService {
             Vehicle vehicle = findVehicle(id);
             vehicle.rent();
             double price = vehicle.calculatePrice(days);
-            rentals.add(new Rental(vehicle, customer, days));
+
+            Rental rental = new Rental(vehicle, customer, days, price);
+
+            saveToFile(rental);
 
             System.out.println("Rental Successful!");
-            System.out.println("Customer: " + customer.getName());
             System.out.println("Total Price: $" + price);
 
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private void saveToFile(Rental rental) {
+        try {
+            FileWriter fw = new FileWriter("rentals.txt", true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(rental.toString());
+            bw.newLine();
+            bw.close();
+        } catch (IOException e) {
+            System.out.println("File Error: " + e.getMessage());
         }
     }
 
@@ -210,41 +220,54 @@ public class Main {
         service.addVehicle(new Car("C101", "Toyota", "Camry", 60));
         service.addVehicle(new PremiumCar("C202", "BMW", "X5", 120));
 
-        while (true) {
-            System.out.println("\n===== Vehicle Rental System =====");
+        int choice;
+
+        do {
+            System.out.println("\n===== VEHICLE RENTAL SYSTEM =====");
             System.out.println("1. Show Available Vehicles");
             System.out.println("2. Rent Vehicle");
             System.out.println("3. Return Vehicle");
             System.out.println("4. Exit");
             System.out.print("Enter choice: ");
-
-            int choice = sc.nextInt();
+            choice = sc.nextInt();
             sc.nextLine();
 
-            if (choice == 1) {
-                service.showAvailableVehicles();
-            } else if (choice == 2) {
-                System.out.print("Enter Name: ");
-                String name = sc.nextLine();
-                Customer customer = new Customer("CUS" + new Random().nextInt(1000), name);
+            switch (choice) {
 
-                System.out.print("Enter Vehicle ID: ");
-                String id = sc.nextLine();
+                case 1:
+                    service.showAvailableVehicles();
+                    break;
 
-                System.out.print("Enter Days: ");
-                int days = sc.nextInt();
+                case 2:
+                    System.out.print("Enter Name: ");
+                    String name = sc.nextLine();
+                    Customer customer = new Customer("CUS" + new Random().nextInt(1000), name);
 
-                service.rentVehicle(id, customer, days);
-            } else if (choice == 3) {
-                System.out.print("Enter Vehicle ID: ");
-                String id = sc.nextLine();
-                service.returnVehicle(id);
-            } else {
-                break;
+                    System.out.print("Enter Vehicle ID: ");
+                    String id = sc.nextLine();
+
+                    System.out.print("Enter Days: ");
+                    int days = sc.nextInt();
+
+                    service.rentVehicle(id, customer, days);
+                    break;
+
+                case 3:
+                    System.out.print("Enter Vehicle ID: ");
+                    String returnId = sc.nextLine();
+                    service.returnVehicle(returnId);
+                    break;
+
+                case 4:
+                    System.out.println("Thank you for using the system!");
+                    break;
+
+                default:
+                    System.out.println("Invalid choice!");
             }
-        }
+
+        } while (choice != 4);
 
         sc.close();
-        System.out.println("Thank you for using the system!");
     }
 }
