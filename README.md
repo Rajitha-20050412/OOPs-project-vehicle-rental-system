@@ -13,8 +13,31 @@ A console-based Vehicle Rental Management System built using Core Java.
 - Custom Exception Handling
 
 ## 🛠 Technologies Used
+- **Java**
+- **JDBC**
+- **MySQL**
+- **Collections Framework**
+- **Object-Oriented Programming**
+## Database Setup
+
+1. Install MySQL
+2. Open MySQL Workbench
+3. Run the file:
+
+database.sql
+
+This will create:
+
+- vehicle_rental database
+- vehicles table
+- rentals table
+
+## Technologies Used
+
 - Java
-- Collections Framework
+- OOP Concepts
+- JDBC
+- MySQL
 
 ## ▶ How to Run
 

@@ -1,15 +1,16 @@
 package src;
-import java.util.*;
-import java.io.*;
 
-// ================= INTERFACE =================
+import java.util.*;
+import java.sql.*;
+
+
 interface Rentable {
     void rent() throws VehicleUnavailableException;
     void returnVehicle() throws VehicleUnavailableException;
     double calculatePrice(int days);
 }
 
-// ================= CUSTOM EXCEPTIONS =================
+
 class VehicleNotFoundException extends Exception {
     public VehicleNotFoundException(String message) {
         super(message);
@@ -22,7 +23,6 @@ class VehicleUnavailableException extends Exception {
     }
 }
 
-// ================= ABSTRACT CLASS =================
 abstract class Vehicle implements Rentable {
 
     protected String vehicleId;
@@ -66,7 +66,6 @@ abstract class Vehicle implements Rentable {
     public abstract double calculatePrice(int days);
 }
 
-// ================= CAR =================
 class Car extends Vehicle {
 
     private String model;
@@ -76,17 +75,12 @@ class Car extends Vehicle {
         this.model = model;
     }
 
-    public String getModel() {
-        return model;
-    }
-
     @Override
     public double calculatePrice(int days) {
         return basePricePerDay * days;
     }
 }
 
-// ================= PREMIUM CAR =================
 class PremiumCar extends Car {
 
     public PremiumCar(String vehicleId, String brand, String model, double basePricePerDay) {
@@ -100,8 +94,8 @@ class PremiumCar extends Car {
     }
 }
 
-// ================= CUSTOMER =================
 class Customer {
+
     private String customerId;
     private String name;
 
@@ -119,8 +113,8 @@ class Customer {
     }
 }
 
-// ================= RENTAL =================
 class Rental {
+
     private Vehicle vehicle;
     private Customer customer;
     private int days;
@@ -133,16 +127,23 @@ class Rental {
         this.totalPrice = totalPrice;
     }
 
-    public String toString() {
-        return "Customer: " + customer.getName() +
-               ", Vehicle ID: " + vehicle.getVehicleId() +
-               ", Brand: " + vehicle.getBrand() +
-               ", Days: " + days +
-               ", Total Price: $" + totalPrice;
+    public Vehicle getVehicle() {
+        return vehicle;
+    }
+
+    public Customer getCustomer() {
+        return customer;
+    }
+
+    public int getDays() {
+        return days;
+    }
+
+    public double getTotalPrice() {
+        return totalPrice;
     }
 }
 
-// ================= SERVICE =================
 class RentalService {
 
     private List<Vehicle> vehicles = new ArrayList<>();
@@ -151,65 +152,141 @@ class RentalService {
         vehicles.add(vehicle);
     }
 
-    public void showAvailableVehicles() {
-        for (Vehicle v : vehicles) {
-            if (v.isAvailable()) {
-                System.out.println(v.getVehicleId() + " - " + v.getBrand());
+    public void loadVehiclesFromDB() {
+
+    try {
+
+        Connection con = DBConnection.getConnection();
+
+        String query = "SELECT * FROM vehicles";
+
+        Statement stmt = con.createStatement();
+
+        ResultSet rs = stmt.executeQuery(query);
+
+        while (rs.next()) {
+
+            String id = rs.getString("vehicle_id");
+            String brand = rs.getString("brand");
+            String model = rs.getString("model");
+            String type = rs.getString("type");
+            double price = rs.getDouble("price_per_day");
+
+            if (type.equalsIgnoreCase("PREMIUM")) {
+
+                vehicles.add(new PremiumCar(id, brand, model, price));
+
+            } else {
+
+                vehicles.add(new Car(id, brand, model, price));
             }
         }
+
+    } catch (Exception e) {
+
+        System.out.println("Error loading vehicles from DB");
+        e.printStackTrace();
     }
+}
+
+
+
+    public void showAvailableVehicles() {
+
+    for (Vehicle v : vehicles) {
+
+        if (v.isAvailable()) {
+
+            if (v instanceof PremiumCar) {
+                System.out.println(v.getVehicleId() + " - " + v.getBrand() + " (Premium)");
+            } else {
+                System.out.println(v.getVehicleId() + " - " + v.getBrand() + " (Car)");
+            }
+
+        }
+    }
+}
 
     public Vehicle findVehicle(String id) throws VehicleNotFoundException {
+
         for (Vehicle v : vehicles) {
             if (v.getVehicleId().equals(id)) {
                 return v;
             }
         }
+
         throw new VehicleNotFoundException("Vehicle ID not found.");
     }
 
     public void rentVehicle(String id, Customer customer, int days) {
+
         try {
+
             Vehicle vehicle = findVehicle(id);
+
             vehicle.rent();
+
             double price = vehicle.calculatePrice(days);
 
             Rental rental = new Rental(vehicle, customer, days, price);
 
-            saveToFile(rental);
+            saveToDatabase(rental);
 
             System.out.println("Rental Successful!");
             System.out.println("Total Price: $" + price);
 
-        } catch (Exception e) {
+        }
+
+        catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private void saveToFile(Rental rental) {
+    private void saveToDatabase(Rental rental) {
+
         try {
-            FileWriter fw = new FileWriter("rentals.txt", true);
-            BufferedWriter bw = new BufferedWriter(fw);
-            bw.write(rental.toString());
-            bw.newLine();
-            bw.close();
-        } catch (IOException e) {
-            System.out.println("File Error: " + e.getMessage());
+
+            Connection con = DBConnection.getConnection();
+
+            String query = "INSERT INTO rentals(vehicle_id, brand, customer_name, days, total_price) VALUES (?, ?, ?, ?, ?)";
+
+            PreparedStatement ps = con.prepareStatement(query);
+
+            ps.setString(1, rental.getVehicle().getVehicleId());
+            ps.setString(2, rental.getVehicle().getBrand());
+            ps.setString(3, rental.getCustomer().getName());
+            ps.setInt(4, rental.getDays());
+            ps.setDouble(5, rental.getTotalPrice());
+
+            ps.executeUpdate();
+
+            System.out.println("Rental stored in database!");
+
+        }
+
+        catch (Exception e) {
+            System.out.println("Database Error: " + e.getMessage());
         }
     }
 
     public void returnVehicle(String id) {
+
         try {
+
             Vehicle vehicle = findVehicle(id);
+
             vehicle.returnVehicle();
+
             System.out.println("Vehicle returned successfully.");
-        } catch (Exception e) {
+
+        }
+
+        catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
         }
     }
 }
 
-// ================= MAIN =================
 public class Main {
 
     public static void main(String[] args) {
@@ -217,30 +294,35 @@ public class Main {
         RentalService service = new RentalService();
         Scanner sc = new Scanner(System.in);
 
-        service.addVehicle(new Car("C101", "Toyota", "Camry", 60));
-        service.addVehicle(new PremiumCar("C202", "BMW", "X5", 120));
+        service.loadVehiclesFromDB();
 
         int choice;
 
         do {
+
             System.out.println("\n===== VEHICLE RENTAL SYSTEM =====");
             System.out.println("1. Show Available Vehicles");
             System.out.println("2. Rent Vehicle");
             System.out.println("3. Return Vehicle");
             System.out.println("4. Exit");
+
             System.out.print("Enter choice: ");
+
             choice = sc.nextInt();
             sc.nextLine();
 
             switch (choice) {
 
                 case 1:
+
                     service.showAvailableVehicles();
                     break;
 
                 case 2:
+
                     System.out.print("Enter Name: ");
                     String name = sc.nextLine();
+
                     Customer customer = new Customer("CUS" + new Random().nextInt(1000), name);
 
                     System.out.print("Enter Vehicle ID: ");
@@ -250,20 +332,27 @@ public class Main {
                     int days = sc.nextInt();
 
                     service.rentVehicle(id, customer, days);
+
                     break;
 
                 case 3:
+
                     System.out.print("Enter Vehicle ID: ");
                     String returnId = sc.nextLine();
+
                     service.returnVehicle(returnId);
+
                     break;
 
                 case 4:
+
                     System.out.println("Thank you for using the system!");
                     break;
 
                 default:
+
                     System.out.println("Invalid choice!");
+
             }
 
         } while (choice != 4);
